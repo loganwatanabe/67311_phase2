@@ -3,8 +3,10 @@
 -- by (student_1) & (student_2)
 --
 --
---default current date for notes, costs?, visits?
---method types
---notable types
+--default current date for notes
+--default current date for costs?
+--default current date for visits?
+--method types ['injection', 'oral', 'intravenous']
+--notable types ['owner', 'pet', 'visit']
 --foreign keys, see note 13
---discount 0<x<1
+--discount 0<= x <=1

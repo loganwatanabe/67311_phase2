@@ -3,3 +3,5 @@
 -- by (student_1) & (student_2)
 --
 --
+--
+-- add a GIN index on medicines(description) using the to_tsvector() function.
