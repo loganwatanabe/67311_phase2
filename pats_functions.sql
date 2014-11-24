@@ -12,6 +12,17 @@
 -- calculate_overnight_stay
 -- (associated with a trigger: update_overnight_stay_flag)
 
+CREATE OR REPLACE FUNCTION calculate_overnight_stay() RETURNS TRIGGER AS $$
+DECLARE
+total_minutes integer;
+BEGIN
+
+END;
+$$ LANGUAGE plpgsql;
+
+--will this fire on a visit insert, cuz the insert data throws an error for a nil overnight boolean?
+CREATE TRIGGER update_overnight_stay_flag() AFTER INSERT OR UPDATE OR DELETE ON treatments
+EXECUTE PROCEDURE calculate_overnight_stay();
 
 
 

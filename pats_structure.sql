@@ -17,7 +17,7 @@ CREATE TABLE pets(
    	animal_id integer NOT NULL,
    	owner_id integer NOT NULL,
    	female boolean NOT NULL,
-   	date_of_birth date,
+   	date_of_birth date default CURRENT_DATE,
    	active boolean NOT NULL DEFAULT true
 );
 
@@ -47,10 +47,10 @@ CREATE TABLE users(
 CREATE TABLE visits(
 	id SERIAL PRIMARY KEY NOT NULL,
 	pet_id integer NOT NULL,
-	date date NOT NULL,
+	date date NOT NULL default CURRENT_DATE,
 	weight integer,
-	overnight_stay boolean NOT NULL,
-	total_charge integer NOT NULL
+	overnight_stay boolean NOT NULL DEFAULT false,
+	total_charge integer NOT NULL DEFAULT 0
 );
 
 CREATE TABLE notes(
@@ -60,7 +60,7 @@ CREATE TABLE notes(
 	title text NOT NULL,
 	content text NOT NULL,
 	user_id integer NOT NULL,
-	date date NOT NULL
+	date date NOT NULL default CURRENT_DATE
 );
 
 CREATE TABLE medicines (
@@ -77,7 +77,7 @@ CREATE TABLE medicine_costs (
 	id SERIAL PRIMARY KEY NOT NULL,
 	medicine_id integer NOT NULL,
 	cost_per_unit integer NOT NULL,
-	start_date date NOT NULL,
+	start_date date NOT NULL default CURRENT_DATE,
 	end_date date
 );
 
@@ -116,6 +116,6 @@ CREATE TABLE procedure_costs (
 	id SERIAL PRIMARY KEY NOT NULL,
 	procedure_id integer NOT NULL,
 	cost integer NOT NULL,
-	start_date date NOT NULL,
+	start_date date NOT NULL default CURRENT_DATE,
 	end_date date
 );
