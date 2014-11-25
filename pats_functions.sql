@@ -32,10 +32,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE TRIGGER update_total_costs_for_medicines_changes AFTER INSERT ON visit_medicines FOR EACH ROW
+CREATE TRIGGER update_total_costs_for_medicines_changes AFTER INSERT OR UPDATE OR DELETE ON visit_medicines FOR EACH ROW
 EXECUTE PROCEDURE calculate_total_costs();
 
-CREATE TRIGGER update_total_costs_for_treatments_changes AFTER INSERT ON treatments FOR EACH ROW
+CREATE TRIGGER update_total_costs_for_treatments_changes AFTER INSERT OR DELETE ON treatments FOR EACH ROW
 EXECUTE PROCEDURE calculate_total_costs();
 
 
@@ -59,62 +59,117 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_overnight_stay_flag AFTER INSERT OR UPDATE OR DELETE ON treatments FOR EACH ROW
+CREATE TRIGGER update_overnight_stay_flag AFTER INSERT OR DELETE ON treatments FOR EACH ROW
 EXECUTE PROCEDURE calculate_overnight_stay();
+
+
+
+
+
+
+
+
+
+-- NEED TO TEST THE TRIGGERS BELOW
+
 
 
 
 -- set_end_date_for_medicine_costs
 -- (associated with a trigger: set_end_date_for_previous_medicine_cost)
--- CREATE OR REPLACE FUNCTION calculate_overnight_stay() RETURNS TRIGGER AS $$
--- DECLARE
+CREATE OR REPLACE FUNCTION set_end_date_for_medicine_costs() RETURNS TRIGGER AS $$
+DECLARE
+	med_id integer;
+	previous_cost_id integer;
+BEGIN
+	med_id = NEW.medicine_id;
+	previous_cost_id = (SELECT id FROM medicine_costs WHERE medicine_id = med_id AND end_date IS NULL);
+	UPDATE medicine_costs SET end_date = CURRENT_DATE WHERE id = previous_cost_id;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
 
--- BEGIN
-
--- END;
--- $$ LANGUAGE plpgsql;
-
--- CREATE TRIGGER update_overnight_stay_flag AFTER INSERT OR UPDATE OR DELETE ON treatments FOR EACH ROW
--- EXECUTE PROCEDURE calculate_overnight_stay();
+CREATE TRIGGER set_end_date_for_previous_medicine_cost BEFORE INSERT ON medicine_costs FOR EACH ROW
+EXECUTE PROCEDURE set_end_date_for_medicine_costs();
 
 
 
 -- -- set_end_date_for_procedure_costs
 -- -- (associated with a trigger: set_end_date_for_previous_procedure_cost)
--- CREATE OR REPLACE FUNCTION calculate_overnight_stay() RETURNS TRIGGER AS $$
--- DECLARE
+CREATE OR REPLACE FUNCTION set_end_date_for_procedure_costs() RETURNS TRIGGER AS $$
+DECLARE
+	proc_id integer;
+	previous_cost_id integer;
+BEGIN
+	proc_id = NEW.procedure_id;
+	previous_cost_id = (SELECT id FROM procedure_costs WHERE procedure_id = proc_id AND end_date IS NULL);
+	UPDATE procedure_costs SET end_date = CURRENT_DATE WHERE id = previous_cost_id;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
 
--- BEGIN
-
--- END;
--- $$ LANGUAGE plpgsql;
-
--- CREATE TRIGGER update_overnight_stay_flag AFTER INSERT OR UPDATE OR DELETE ON treatments FOR EACH ROW
--- EXECUTE PROCEDURE calculate_overnight_stay();
+CREATE TRIGGER set_end_date_for_previous_procedure_cost BEFORE INSERT ON procedure_costs FOR EACH ROW
+EXECUTE PROCEDURE set_end_date_for_procedure_costs();
 
 
 
 -- -- decrease_stock_amount_after_dosage
 -- -- (associated with a trigger: update_stock_amount_for_medicines)
--- CREATE OR REPLACE FUNCTION calculate_overnight_stay() RETURNS TRIGGER AS $$
--- DECLARE
+CREATE OR REPLACE FUNCTION decrease_stock_amount_after_dosage() RETURNS TRIGGER AS $$
+DECLARE
+	med_id integer;
+	old_stock integer;
+	new_stock integer;
+BEGIN
+	med_id = NEW.medicine_id;
+	old_stock = (SELECT stock_amount FROM medicines WHERE medicines.id = med_id);
+	new_stock = old_stock - NEW.units_given;
+	UPDATE medicines SET stock_amount = new_stock WHERE id = previous_cost_id;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
 
--- BEGIN
-
--- END;
--- $$ LANGUAGE plpgsql;
-
--- CREATE TRIGGER update_overnight_stay_flag AFTER INSERT OR UPDATE OR DELETE ON treatments FOR EACH ROW
--- EXECUTE PROCEDURE calculate_overnight_stay();
+CREATE TRIGGER update_stock_amount_for_medicines BEFORE INSERT ON visit_medicines FOR EACH ROW--HOW TO ACCOUNT FOR UPDATES????
+WHEN (verify_that_medicine_requested_in_stock(NEW.medicine_id, NEW.units_given) = TRUE)	--might need to remove this
+EXECUTE PROCEDURE decrease_stock_amount_after_dosage();
 
 
+
+
+--THIS WORKS
 
 -- verify_that_medicine_requested_in_stock
 -- (takes medicine_id and units_needed as arguments and returns a boolean)
+CREATE OR REPLACE FUNCTION verify_that_medicine_requested_in_stock(medicine_id integer, units_needed integer) RETURNS boolean AS $$
+DECLARE
+	stock integer;
+BEGIN
+	stock = (SELECT stock_amount FROM medicines WHERE medicines.id = medicine_id);
+	IF stock >= units_needed THEN
+		RETURN TRUE;
+	ELSE
+		RETURN FALSE;
+	END IF;
+END;
+$$ LANGUAGE plpgsql;
 
 
 
+
+--??????? I'm assuming that 'appropriate' just means an animal_medicine record exists for the pet's animal type
+--anyways, it works
 
 -- verify_that_medicine_is_appropriate_for_pet
 -- (takes medicine_id and pet_id as arguments and returns a boolean)
+CREATE OR REPLACE FUNCTION verify_that_medicine_is_appropriate_for_pet(med_id integer, pet_id integer) RETURNS boolean AS $$
+DECLARE
+	anim_id integer;
+	exists boolean;
+BEGIN
+	anim_id = (SELECT pets.animal_id FROM pets WHERE pets.id = pet_id);
+	exists = (EXISTS(SELECT * FROM animal_medicines WHERE animal_medicines.medicine_id = med_id AND animal_medicines.animal_id = anim_id));
+	RETURN exists;
+END;
+$$ LANGUAGE plpgsql;
+
 
