@@ -9,3 +9,7 @@ Put your names in each of the remains pats_.sql files and populate it with the c
 ```  
  NOTE: in this case do not replace the 'pats' owner with your own db owner name in the data files before trying to load the database.  The ownership is already set to a user called 'pats' so simply create a new user 'pats' on your local machine who owns the pats db. For security reasons, this user should NOT be a superuser.
 ```
+
+DROP DATABASE pats;
+CREATE DATABASE pats OWNER loganwatanabe;
+\c pats;

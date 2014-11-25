@@ -7,13 +7,13 @@
 
 CREATE TABLE animals(
 	id SERIAL PRIMARY KEY,
-   	name text NOT NULL,
+   	name varchar(40) NOT NULL,
   	active boolean NOT NULL DEFAULT true
 );
 
 CREATE TABLE pets(
 	id SERIAL PRIMARY KEY,
-   	name text NOT NULL,
+   	name varchar(40) NOT NULL,
    	animal_id integer NOT NULL,
    	owner_id integer NOT NULL,
    	female boolean NOT NULL,
@@ -23,23 +23,23 @@ CREATE TABLE pets(
 
 CREATE TABLE owners(
 	id SERIAL PRIMARY KEY,
-	first_name text NOT NULL,
-	last_name text NOT NULL,
-	street text NOT NULL,
-	city text NOT NULL,
-	state text NOT NULL DEFAULT 'PA',
-	zip text NOT NULL,
-	phone text,
-	email text,
+	first_name varchar(40) NOT NULL,
+	last_name varchar(40) NOT NULL,
+	street varchar(40) NOT NULL,
+	city varchar(40) NOT NULL,
+	state varchar(2) NOT NULL DEFAULT 'PA',
+	zip varchar(16) NOT NULL,
+	phone varchar(10),
+	email varchar(40),
 	active boolean NOT NULL DEFAULT true
 );
 
 CREATE TABLE users(
    id SERIAL PRIMARY KEY,
-   first_name text NOT NULL,
-   last_name text NOT NULL,
-   role text NOT NULL,
-   username text NOT NULL UNIQUE,
+   first_name varchar(40) NOT NULL,
+   last_name varchar(40) NOT NULL,
+   role varchar(40) NOT NULL,
+   username varchar(40) NOT NULL UNIQUE,
    password_digest text NOT NULL,
    active boolean NOT NULL DEFAULT true
 );
@@ -49,15 +49,15 @@ CREATE TABLE visits(
 	pet_id integer NOT NULL,
 	date date NOT NULL default CURRENT_DATE,
 	weight integer,
-	overnight_stay boolean NOT NULL DEFAULT false,
-	total_charge integer NOT NULL DEFAULT 0
+	overnight_stay boolean DEFAULT false,
+	total_charge integer DEFAULT 0
 );
 
 CREATE TABLE notes(
 	id SERIAL PRIMARY KEY NOT NULL,
-	notable_type text NOT NULL,
+	notable_type varchar(10) NOT NULL,
 	notable_id integer NOT NULL,
-	title text NOT NULL,
+	title varchar(40) NOT NULL,
 	content text NOT NULL,
 	user_id integer NOT NULL,
 	date date NOT NULL default CURRENT_DATE
@@ -68,8 +68,8 @@ CREATE TABLE medicines (
 	name text NOT NULL,
 	description text NOT NULL,
 	stock_amount integer NOT NULL,
-	method text NOT NULL,
-	unit text NOT NULL,
+	method varchar(40) NOT NULL,
+	unit varchar(40) NOT NULL,
 	vaccine boolean DEFAULT false NOT NULL
 );
 
@@ -98,7 +98,7 @@ CREATE TABLE visit_medicines (
 
 CREATE TABLE procedures (
 	id SERIAL PRIMARY KEY NOT NULL,
-	name text NOT NULL,
+	name varchar(40) NOT NULL,
 	description text,
 	length_of_time integer NOT NULL,
 	active boolean NOT NULL DEFAULT true

@@ -35,22 +35,18 @@ ALTER TABLE treatments
 ADD CONSTRAINT treatment_visit_fk
 FOREIGN KEY (visit_id) REFERENCES visits(id) ON DELETE RESTRICT ON UPDATE CASCADE;
 
---allow this?
 ALTER TABLE animal_medicines
 ADD CONSTRAINT animal_med_animal_fk
 FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE RESTRICT ON UPDATE CASCADE;
---or this?
+
 ALTER TABLE animal_medicines
 ADD CONSTRAINT animal_med_medicine_fk
-FOREIGN KEY (medicine_id) REFERENCES medicines(id) ON DELETE RESTRICT ON UPDATE CASCADE;
+FOREIGN KEY (medicine_id) REFERENCES medicines(id) ON DELETE CASCADE ON UPDATE CASCADE;
 
---possible change
 ALTER TABLE visit_medicines
 ADD CONSTRAINT visit_medicine_med_fk
 FOREIGN KEY (medicine_id) REFERENCES medicines(id) ON DELETE RESTRICT ON UPDATE CASCADE;
 
-
---possible change
 ALTER TABLE treatments
 ADD CONSTRAINT treatment_procedure_fk
 FOREIGN KEY (procedure_id) REFERENCES procedures(id) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -69,24 +65,13 @@ ALTER TABLE medicines
 ADD CONSTRAINT medicine_method
 CHECK (method IN ('intravenous', 'oral', 'injection'));
 
---help to ensure FK actually exists, can this be done with a constraint??
+
+
+
+--help to ensure FK type is there, prof h said we don't need to check actual id
 ALTER TABLE notes
 ADD CONSTRAINT notable_type_check
-CHECK (notable_type IN ('owner', 'pet', 'visit'));
-
---!?!?!?!?!?!?!?!?!?!?!?!?
-CREATE FUNCTION notable_check (@type text, @id int) RETURNS INT
-AS
-BEGIN
-	DECLARE @table =  @type || 's';
-	RETURN (
-		SELECT count(*) FROM @table WHERE id = @id;
-	);
-END;
-
-ALTER TABLE notes
-ADD CONSTRAINT notable_id_check
-CHECK ( notable_check() = 1);
+CHECK (notable_type IN ('owners', 'pets', 'visits'));
 
 
 --discount 0<= x <=1
@@ -97,10 +82,3 @@ CHECK ( discount BETWEEN 0 AND 1);
 ALTER TABLE treatments
 ADD CONSTRAINT treatment_discount_check
 CHECK ( discount BETWEEN 0 AND 1);
-
-INSERT INTO medicines (name, description, stock_amount, method, unit, vaccine) VALUES ('Herbs','Ancient Chinese Herbs',15,'oral','ounces',false);
-INSERT INTO animals (name, description, stock_amount, method, unit, vaccine) VALUES ('Herbs','Ancient Chinese Herbs',15,'oral','ounces',false);
-INSERT INTO medicines (name, description, stock_amount, method, unit, vaccine) VALUES ('Herbs','Ancient Chinese Herbs',15,'oral','ounces',false);
-
-
-
