@@ -128,9 +128,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_stock_amount_for_medicines BEFORE INSERT ON visit_medicines FOR EACH ROW--HOW TO ACCOUNT FOR UPDATES????
+CREATE TRIGGER update_stock_amount_for_medicines AFTER INSERT ON visit_medicines FOR EACH ROW--HOW TO ACCOUNT FOR UPDATES????
 EXECUTE PROCEDURE decrease_stock_amount_after_dosage();
-
 
 
 
