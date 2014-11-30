@@ -70,7 +70,8 @@ EXECUTE PROCEDURE calculate_overnight_stay();
 
 
 
--- NEED TO TEST THE TRIGGERS BELOW
+-- THE TRIGGERS BELOW WORK, but the test data is input backwards, so there are no current costs because it automatically closes any null end_dates
+-- but with correctly input data it works.  Will ask prof h about this.
 
 
 
@@ -83,16 +84,14 @@ DECLARE
 	previous_cost_id integer;
 BEGIN
 	med_id = NEW.medicine_id;
-	previous_cost_id = (SELECT id FROM medicine_costs WHERE medicine_id = med_id AND end_date IS NULL);
-	UPDATE medicine_costs SET end_date = CURRENT_DATE WHERE id = previous_cost_id;
+	previous_cost_id = (SELECT id FROM medicine_costs WHERE medicine_id = med_id AND end_date IS NULL AND id != NEW.id);
+	UPDATE medicine_costs SET end_date = NEW.start_date WHERE id = previous_cost_id;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER set_end_date_for_previous_medicine_cost BEFORE INSERT ON medicine_costs FOR EACH ROW
+CREATE TRIGGER set_end_date_for_previous_medicine_cost AFTER INSERT ON medicine_costs FOR EACH ROW
 EXECUTE PROCEDURE set_end_date_for_medicine_costs();
-
-
 
 -- -- set_end_date_for_procedure_costs
 -- -- (associated with a trigger: set_end_date_for_previous_procedure_cost)
@@ -102,13 +101,13 @@ DECLARE
 	previous_cost_id integer;
 BEGIN
 	proc_id = NEW.procedure_id;
-	previous_cost_id = (SELECT id FROM procedure_costs WHERE procedure_id = proc_id AND end_date IS NULL);
-	UPDATE procedure_costs SET end_date = CURRENT_DATE WHERE id = previous_cost_id;
+	previous_cost_id = (SELECT id FROM procedure_costs WHERE procedure_id = proc_id AND end_date IS NULL AND id != NEW.id);
+	UPDATE procedure_costs SET end_date = NEW.start_date WHERE id = previous_cost_id;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER set_end_date_for_previous_procedure_cost BEFORE INSERT ON procedure_costs FOR EACH ROW
+CREATE TRIGGER set_end_date_for_previous_procedure_cost AFTER INSERT ON procedure_costs FOR EACH ROW
 EXECUTE PROCEDURE set_end_date_for_procedure_costs();
 
 
@@ -124,13 +123,12 @@ BEGIN
 	med_id = NEW.medicine_id;
 	old_stock = (SELECT stock_amount FROM medicines WHERE medicines.id = med_id);
 	new_stock = old_stock - NEW.units_given;
-	UPDATE medicines SET stock_amount = new_stock WHERE id = previous_cost_id;
+	UPDATE medicines SET stock_amount = new_stock WHERE id = med_id;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER update_stock_amount_for_medicines BEFORE INSERT ON visit_medicines FOR EACH ROW--HOW TO ACCOUNT FOR UPDATES????
-WHEN (verify_that_medicine_requested_in_stock(NEW.medicine_id, NEW.units_given) = TRUE)	--might need to remove this
 EXECUTE PROCEDURE decrease_stock_amount_after_dosage();
 
 
@@ -157,7 +155,7 @@ $$ LANGUAGE plpgsql;
 
 
 --??????? I'm assuming that 'appropriate' just means an animal_medicine record exists for the pet's animal type
---anyways, it works
+--anyways, IT WORKS
 
 -- verify_that_medicine_is_appropriate_for_pet
 -- (takes medicine_id and pet_id as arguments and returns a boolean)

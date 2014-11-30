@@ -70,7 +70,7 @@ CREATE TABLE medicines (
 	stock_amount integer NOT NULL,
 	method varchar(40) NOT NULL,
 	unit varchar(40) NOT NULL,
-	vaccine boolean DEFAULT false NOT NULL
+	vaccine boolean NOT NULL DEFAULT false
 );
 
 CREATE TABLE medicine_costs (

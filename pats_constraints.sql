@@ -7,6 +7,7 @@
 --notable types ['owner', 'pet', 'visit']
 --foreign keys, see note 13
 --discount 0<= x <=1
+--finished
 
 
 --FOREIGN KEYS
