@@ -64,54 +64,6 @@ EXECUTE PROCEDURE calculate_overnight_stay();
 
 
 
-
-
-
-
-
-
--- THE TRIGGERS BELOW WORK, but the test data is input backwards, so there are no current costs because it automatically closes any null end_dates
--- but with correctly input data it works.  Will ask prof h about this.
-
-
-
-
--- set_end_date_for_medicine_costs
--- (associated with a trigger: set_end_date_for_previous_medicine_cost)
-CREATE OR REPLACE FUNCTION set_end_date_for_medicine_costs() RETURNS TRIGGER AS $$
-DECLARE
-	med_id integer;
-	previous_cost_id integer;
-BEGIN
-	med_id = NEW.medicine_id;
-	previous_cost_id = (SELECT id FROM medicine_costs WHERE medicine_id = med_id AND end_date IS NULL AND id != NEW.id);
-	UPDATE medicine_costs SET end_date = NEW.start_date WHERE id = previous_cost_id;
-	RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER set_end_date_for_previous_medicine_cost AFTER INSERT ON medicine_costs FOR EACH ROW
-EXECUTE PROCEDURE set_end_date_for_medicine_costs();
-
--- -- set_end_date_for_procedure_costs
--- -- (associated with a trigger: set_end_date_for_previous_procedure_cost)
-CREATE OR REPLACE FUNCTION set_end_date_for_procedure_costs() RETURNS TRIGGER AS $$
-DECLARE
-	proc_id integer;
-	previous_cost_id integer;
-BEGIN
-	proc_id = NEW.procedure_id;
-	previous_cost_id = (SELECT id FROM procedure_costs WHERE procedure_id = proc_id AND end_date IS NULL AND id != NEW.id);
-	UPDATE procedure_costs SET end_date = NEW.start_date WHERE id = previous_cost_id;
-	RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER set_end_date_for_previous_procedure_cost AFTER INSERT ON procedure_costs FOR EACH ROW
-EXECUTE PROCEDURE set_end_date_for_procedure_costs();
-
-
-
 -- -- decrease_stock_amount_after_dosage
 -- -- (associated with a trigger: update_stock_amount_for_medicines)
 CREATE OR REPLACE FUNCTION decrease_stock_amount_after_dosage() RETURNS TRIGGER AS $$
@@ -168,5 +120,50 @@ BEGIN
 	RETURN exists;
 END;
 $$ LANGUAGE plpgsql;
+
+
+
+
+
+
+-- THE TRIGGERS BELOW WORK, but the test data is input backwards, so there are no current costs because it automatically closes any null end_dates
+-- but with correctly input data it works.  need to put these in after data is loaded
+
+
+
+
+-- set_end_date_for_medicine_costs
+-- (associated with a trigger: set_end_date_for_previous_medicine_cost)
+CREATE OR REPLACE FUNCTION set_end_date_for_medicine_costs() RETURNS TRIGGER AS $$
+DECLARE
+	med_id integer;
+	previous_cost_id integer;
+BEGIN
+	med_id = NEW.medicine_id;
+	previous_cost_id = (SELECT id FROM medicine_costs WHERE medicine_id = med_id AND end_date IS NULL AND id != NEW.id);
+	UPDATE medicine_costs SET end_date = NEW.start_date WHERE id = previous_cost_id;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER set_end_date_for_previous_medicine_cost AFTER INSERT ON medicine_costs FOR EACH ROW
+EXECUTE PROCEDURE set_end_date_for_medicine_costs();
+
+-- -- set_end_date_for_procedure_costs
+-- -- (associated with a trigger: set_end_date_for_previous_procedure_cost)
+CREATE OR REPLACE FUNCTION set_end_date_for_procedure_costs() RETURNS TRIGGER AS $$
+DECLARE
+	proc_id integer;
+	previous_cost_id integer;
+BEGIN
+	proc_id = NEW.procedure_id;
+	previous_cost_id = (SELECT id FROM procedure_costs WHERE procedure_id = proc_id AND end_date IS NULL AND id != NEW.id);
+	UPDATE procedure_costs SET end_date = NEW.start_date WHERE id = previous_cost_id;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER set_end_date_for_previous_procedure_cost AFTER INSERT ON procedure_costs FOR EACH ROW
+EXECUTE PROCEDURE set_end_date_for_procedure_costs();
 
 

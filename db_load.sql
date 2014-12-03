@@ -1,3 +1,312 @@
+psql
+
+CREATE USER pats;
+
+DROP DATABASE pats;
+
+CREATE DATABASE pats OWNER pats;
+
+\q
+
+psql -U pats
+
+
+--structure
+
+
+CREATE TABLE animals(
+	id SERIAL PRIMARY KEY,
+   	name varchar(40) NOT NULL,
+  	active boolean NOT NULL DEFAULT true
+);
+
+CREATE TABLE pets(
+	id SERIAL PRIMARY KEY,
+   	name varchar(40) NOT NULL,
+   	animal_id integer NOT NULL,
+   	owner_id integer NOT NULL,
+   	female boolean NOT NULL,
+   	date_of_birth date default CURRENT_DATE,
+   	active boolean NOT NULL DEFAULT true
+);
+
+CREATE TABLE owners(
+	id SERIAL PRIMARY KEY,
+	first_name varchar(40) NOT NULL,
+	last_name varchar(40) NOT NULL,
+	street varchar(40) NOT NULL,
+	city varchar(40) NOT NULL,
+	state varchar(2) NOT NULL DEFAULT 'PA',
+	zip varchar(16) NOT NULL,
+	phone varchar(10),
+	email varchar(40),
+	active boolean NOT NULL DEFAULT true
+);
+
+CREATE TABLE users(
+   id SERIAL PRIMARY KEY,
+   first_name varchar(40) NOT NULL,
+   last_name varchar(40) NOT NULL,
+   role varchar(40) NOT NULL,
+   username varchar(40) NOT NULL UNIQUE,
+   password_digest text NOT NULL,
+   active boolean NOT NULL DEFAULT true
+);
+
+CREATE TABLE visits(
+	id SERIAL PRIMARY KEY NOT NULL,
+	pet_id integer NOT NULL,
+	date date NOT NULL default CURRENT_DATE,
+	weight integer,
+	overnight_stay boolean DEFAULT false,
+	total_charge integer DEFAULT 0
+);
+
+CREATE TABLE notes(
+	id SERIAL PRIMARY KEY NOT NULL,
+	notable_type varchar(10) NOT NULL,
+	notable_id integer NOT NULL,
+	title varchar(40) NOT NULL,
+	content text NOT NULL,
+	user_id integer NOT NULL,
+	date date NOT NULL default CURRENT_DATE
+);
+
+CREATE TABLE medicines (
+	id SERIAL PRIMARY KEY NOT NULL,
+	name text NOT NULL,
+	description text NOT NULL,
+	stock_amount integer NOT NULL,
+	method varchar(40) NOT NULL,
+	unit varchar(40) NOT NULL,
+	vaccine boolean NOT NULL DEFAULT false
+);
+
+CREATE TABLE medicine_costs (
+	id SERIAL PRIMARY KEY NOT NULL,
+	medicine_id integer NOT NULL,
+	cost_per_unit integer NOT NULL,
+	start_date date NOT NULL default CURRENT_DATE,
+	end_date date
+);
+
+CREATE TABLE animal_medicines (
+	id SERIAL PRIMARY KEY NOT NULL,
+	animal_id integer NOT NULL,
+	medicine_id integer NOT NULL,
+	recommended_num_of_units integer
+);
+
+CREATE TABLE visit_medicines (
+	id SERIAL PRIMARY KEY NOT NULL,
+	visit_id integer NOT NULL,
+	medicine_id integer NOT NULL,
+	units_given integer NOT NULL,
+	discount real NOT NULL DEFAULT 0
+);
+
+CREATE TABLE procedures (
+	id SERIAL PRIMARY KEY NOT NULL,
+	name varchar(40) NOT NULL,
+	description text,
+	length_of_time integer NOT NULL,
+	active boolean NOT NULL DEFAULT true
+);
+
+CREATE TABLE treatments (
+	id SERIAL PRIMARY KEY NOT NULL,
+	visit_id integer NOT NULL,
+	procedure_id integer NOT NULL,
+	successful boolean,
+	discount real NOT NULL DEFAULT 0
+);
+
+CREATE TABLE procedure_costs (
+	id SERIAL PRIMARY KEY NOT NULL,
+	procedure_id integer NOT NULL,
+	cost integer NOT NULL,
+	start_date date NOT NULL default CURRENT_DATE,
+	end_date date
+);
+
+--CONSTRAINTS
+
+
+ALTER TABLE pets
+ADD CONSTRAINT pet_animal_fk
+FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE pets
+ADD CONSTRAINT pet_owner_fk
+FOREIGN KEY (owner_id) REFERENCES owners(id) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE visits
+ADD CONSTRAINT visit_pet_fk
+FOREIGN KEY (pet_id) REFERENCES pets(id) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE medicine_costs
+ADD CONSTRAINT med_cost_medicine_fk
+FOREIGN KEY (medicine_id) REFERENCES medicines(id) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE visit_medicines
+ADD CONSTRAINT visit_medicine_visit_fk
+FOREIGN KEY (visit_id) REFERENCES visits(id) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE treatments
+ADD CONSTRAINT treatment_visit_fk
+FOREIGN KEY (visit_id) REFERENCES visits(id) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE animal_medicines
+ADD CONSTRAINT animal_med_animal_fk
+FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE animal_medicines
+ADD CONSTRAINT animal_med_medicine_fk
+FOREIGN KEY (medicine_id) REFERENCES medicines(id) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE visit_medicines
+ADD CONSTRAINT visit_medicine_med_fk
+FOREIGN KEY (medicine_id) REFERENCES medicines(id) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE treatments
+ADD CONSTRAINT treatment_procedure_fk
+FOREIGN KEY (procedure_id) REFERENCES procedures(id) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE procedure_costs
+ADD CONSTRAINT procedure_cost_procedure_fk
+FOREIGN KEY (procedure_id) REFERENCES procedures(id) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE notes
+ADD CONSTRAINT note_user_fk
+FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+--String constraints
+ALTER TABLE medicines
+ADD CONSTRAINT medicine_method
+CHECK (method IN ('intravenous', 'oral', 'injection'));
+
+--help to ensure FK type is there, prof h said we don't need to check actual id
+ALTER TABLE notes
+ADD CONSTRAINT notable_type_check
+CHECK (notable_type IN ('owners', 'pets', 'visits'));
+
+--discount 0<= x <=1
+ALTER TABLE visit_medicines
+ADD CONSTRAINT med_discount_check
+CHECK ( discount BETWEEN 0 AND 1);
+
+ALTER TABLE treatments
+ADD CONSTRAINT treatment_discount_check
+CHECK ( discount BETWEEN 0 AND 1);
+
+-- FIRST TRIGGERS
+
+-- calculate_total_costs
+-- (associated with two triggers: update_total_costs_for_medicines_changes & update_total_costs_for_treatments_changes)
+CREATE OR REPLACE FUNCTION calculate_total_costs() RETURNS TRIGGER AS $$
+DECLARE
+v_id integer;
+overall_cost integer;
+total_cost_medicines integer;
+total_cost_treatments integer;
+BEGIN
+	v_id = NEW.visit_id;
+	total_cost_medicines = (SELECT COALESCE(ROUND(SUM(cost_per_unit*units_given*(1-discount))), 0) FROM medicine_costs 
+			JOIN medicines ON medicine_costs.medicine_id = medicines.id
+			JOIN visit_medicines ON visit_medicines.medicine_id = medicines.id
+			JOIN visits ON visits.id = visit_medicines.visit_id
+			WHERE visit_medicines.visit_id = v_id AND medicine_costs.end_date IS NULL
+			);
+	total_cost_treatments = (SELECT COALESCE(ROUND(SUM(cost*(1-discount))),0) FROM procedure_costs 
+		JOIN procedures ON procedure_costs.procedure_id = procedures.id
+		JOIN treatments ON treatments.procedure_id = procedures.id
+		JOIN visits ON visits.id = treatments.visit_id
+		WHERE treatments.visit_id = v_id AND procedure_costs.end_date IS NULL
+		);
+	overall_cost = total_cost_treatments + total_cost_medicines;
+	UPDATE visits SET total_charge = overall_cost WHERE id = v_id;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER update_total_costs_for_medicines_changes AFTER INSERT OR UPDATE OR DELETE ON visit_medicines FOR EACH ROW
+EXECUTE PROCEDURE calculate_total_costs();
+
+CREATE TRIGGER update_total_costs_for_treatments_changes AFTER INSERT OR DELETE ON treatments FOR EACH ROW
+EXECUTE PROCEDURE calculate_total_costs();
+
+-- calculate_overnight_stay
+-- (associated with a trigger: update_overnight_stay_flag)
+CREATE OR REPLACE FUNCTION calculate_overnight_stay() RETURNS TRIGGER AS $$
+DECLARE
+total_minutes integer;
+last_treatment integer;
+v_id integer;
+BEGIN
+	v_id = NEW.visit_id;
+	total_minutes = (SELECT SUM(length_of_time) FROM procedures JOIN treatments ON treatments.procedure_id = procedures.id JOIN visits ON visits.id = treatments.visit_id AND visit_id = v_id GROUP BY visits.id);
+	IF total_minutes >= 720 THEN
+		UPDATE visits SET overnight_stay = TRUE WHERE id = v_id;
+	ELSE
+		UPDATE visits SET overnight_stay = FALSE WHERE id = v_id;
+	END IF;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER update_overnight_stay_flag AFTER INSERT OR DELETE ON treatments FOR EACH ROW
+EXECUTE PROCEDURE calculate_overnight_stay();
+
+-- -- decrease_stock_amount_after_dosage
+-- -- (associated with a trigger: update_stock_amount_for_medicines)
+CREATE OR REPLACE FUNCTION decrease_stock_amount_after_dosage() RETURNS TRIGGER AS $$
+DECLARE
+	med_id integer;
+	old_stock integer;
+	new_stock integer;
+BEGIN
+	med_id = NEW.medicine_id;
+	old_stock = (SELECT stock_amount FROM medicines WHERE medicines.id = med_id);
+	new_stock = old_stock - NEW.units_given;
+	UPDATE medicines SET stock_amount = new_stock WHERE id = med_id;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER update_stock_amount_for_medicines AFTER INSERT ON visit_medicines FOR EACH ROW--HOW TO ACCOUNT FOR UPDATES????
+EXECUTE PROCEDURE decrease_stock_amount_after_dosage();
+
+-- verify_that_medicine_requested_in_stock
+-- (takes medicine_id and units_needed as arguments and returns a boolean)
+CREATE OR REPLACE FUNCTION verify_that_medicine_requested_in_stock(medicine_id integer, units_needed integer) RETURNS boolean AS $$
+DECLARE
+	stock integer;
+BEGIN
+	stock = (SELECT stock_amount FROM medicines WHERE medicines.id = medicine_id);
+	IF stock >= units_needed THEN
+		RETURN TRUE;
+	ELSE
+		RETURN FALSE;
+	END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- verify_that_medicine_is_appropriate_for_pet
+-- (takes medicine_id and pet_id as arguments and returns a boolean)
+CREATE OR REPLACE FUNCTION verify_that_medicine_is_appropriate_for_pet(med_id integer, pet_id integer) RETURNS boolean AS $$
+DECLARE
+	anim_id integer;
+	exists boolean;
+BEGIN
+	anim_id = (SELECT pets.animal_id FROM pets WHERE pets.id = pet_id);
+	exists = (EXISTS(SELECT * FROM animal_medicines WHERE animal_medicines.medicine_id = med_id AND animal_medicines.animal_id = anim_id));
+	RETURN exists;
+END;
+$$ LANGUAGE plpgsql;
+
+--INDEX
+CREATE INDEX medicine_desc_idx ON medicines USING gin(to_tsvector('english',description));
+
+--LOAD DATA
 --THIS DOES NOT LOAD IN visit_medicines
 
 --
@@ -8670,4 +8979,51 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 --
 -- PostgreSQL database dump complete
 --
+
+
+
+--TRIGGERS FOR END_COST
+
+-- set_end_date_for_medicine_costs
+-- (associated with a trigger: set_end_date_for_previous_medicine_cost)
+CREATE OR REPLACE FUNCTION set_end_date_for_medicine_costs() RETURNS TRIGGER AS $$
+DECLARE
+	med_id integer;
+	previous_cost_id integer;
+BEGIN
+	med_id = NEW.medicine_id;
+	previous_cost_id = (SELECT id FROM medicine_costs WHERE medicine_id = med_id AND end_date IS NULL AND id != NEW.id);
+	UPDATE medicine_costs SET end_date = NEW.start_date WHERE id = previous_cost_id;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER set_end_date_for_previous_medicine_cost AFTER INSERT ON medicine_costs FOR EACH ROW
+EXECUTE PROCEDURE set_end_date_for_medicine_costs();
+
+-- -- set_end_date_for_procedure_costs
+-- -- (associated with a trigger: set_end_date_for_previous_procedure_cost)
+CREATE OR REPLACE FUNCTION set_end_date_for_procedure_costs() RETURNS TRIGGER AS $$
+DECLARE
+	proc_id integer;
+	previous_cost_id integer;
+BEGIN
+	proc_id = NEW.procedure_id;
+	previous_cost_id = (SELECT id FROM procedure_costs WHERE procedure_id = proc_id AND end_date IS NULL AND id != NEW.id);
+	UPDATE procedure_costs SET end_date = NEW.start_date WHERE id = previous_cost_id;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER set_end_date_for_previous_procedure_cost AFTER INSERT ON procedure_costs FOR EACH ROW
+EXECUTE PROCEDURE set_end_date_for_procedure_costs();
+
+--USER PRIVLIEGES
+
+REVOKE DELETE ON visit_medicines FROM pats;
+REVOKE DELETE ON treatments FROM pats;
+REVOKE UPDATE (units_given) ON visit_medicines FROM pats;
+
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO PUBLIC;
 
