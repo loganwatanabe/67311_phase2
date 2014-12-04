@@ -1,14 +1,14 @@
-psql
+-- psql
 
-CREATE USER pats;
+-- CREATE USER pats;
 
-DROP DATABASE pats;
+-- DROP DATABASE pats;
 
-CREATE DATABASE pats OWNER pats;
+-- CREATE DATABASE pats OWNER pats;
 
-\q
+-- \q
 
-psql -U pats
+-- psql -U pats
 
 
 --structure
