@@ -1,6 +1,6 @@
 -- FUNCTIONS AND TRIGGERS FOR PATS DATABASE
 --
--- by (student_1) & (student_2)
+-- by (Jay Chopra) & (Logan Watanabe)
 --
 --
 -- calculate_total_costs
@@ -64,27 +64,6 @@ EXECUTE PROCEDURE calculate_overnight_stay();
 
 
 
--- -- decrease_stock_amount_after_dosage
--- -- (associated with a trigger: update_stock_amount_for_medicines)
-CREATE OR REPLACE FUNCTION decrease_stock_amount_after_dosage() RETURNS TRIGGER AS $$
-DECLARE
-	med_id integer;
-	old_stock integer;
-	new_stock integer;
-BEGIN
-	med_id = NEW.medicine_id;
-	old_stock = (SELECT stock_amount FROM medicines WHERE medicines.id = med_id);
-	new_stock = old_stock - NEW.units_given;
-	UPDATE medicines SET stock_amount = new_stock WHERE id = med_id;
-	RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER update_stock_amount_for_medicines AFTER INSERT ON visit_medicines FOR EACH ROW--HOW TO ACCOUNT FOR UPDATES????
-EXECUTE PROCEDURE decrease_stock_amount_after_dosage();
-
-
-
 --THIS WORKS
 
 -- verify_that_medicine_requested_in_stock
@@ -105,9 +84,6 @@ $$ LANGUAGE plpgsql;
 
 
 
---??????? I'm assuming that 'appropriate' just means an animal_medicine record exists for the pet's animal type
---anyways, IT WORKS
-
 -- verify_that_medicine_is_appropriate_for_pet
 -- (takes medicine_id and pet_id as arguments and returns a boolean)
 CREATE OR REPLACE FUNCTION verify_that_medicine_is_appropriate_for_pet(med_id integer, pet_id integer) RETURNS boolean AS $$
@@ -120,6 +96,31 @@ BEGIN
 	RETURN exists;
 END;
 $$ LANGUAGE plpgsql;
+
+--trigger to ensure animal is getting appropriate medicine
+CREATE OR REPLACE FUNCTION check_visit_med_for_pet() RETURNS TRIGGER AS $$
+DECLARE
+	med_id integer;
+	pets_id integer;
+BEGIN
+	med_id = NEW.medicine_id;
+	pets_id = (SELECT pet_id FROM visits WHERE id = NEW.visit_id);
+	IF verify_that_medicine_is_appropriate_for_pet(med_id, pets_id) THEN
+		RETURN NEW;
+	ELSE
+		RAISE EXCEPTION '% is not recommended for this animal', (SELECT name FROM medicines WHERE id=med_id);
+		RETURN NULL;
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_pet_med BEFORE INSERT ON visit_medicines FOR EACH ROW
+EXECUTE PROCEDURE check_visit_med_for_pet();
+
+
+
+
 
 
 
@@ -165,5 +166,29 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER set_end_date_for_previous_procedure_cost AFTER INSERT ON procedure_costs FOR EACH ROW
 EXECUTE PROCEDURE set_end_date_for_procedure_costs();
+
+-- -- decrease_stock_amount_after_dosage
+-- -- (associated with a trigger: update_stock_amount_for_medicines)
+CREATE OR REPLACE FUNCTION decrease_stock_amount_after_dosage() RETURNS TRIGGER AS $$
+DECLARE
+	med_id integer;
+	old_stock integer;
+	new_stock integer;
+BEGIN
+	med_id = NEW.medicine_id;
+	IF verify_that_medicine_requested_in_stock(med_id, NEW.units_given) THEN
+		old_stock = (SELECT stock_amount FROM medicines WHERE medicines.id = med_id);
+		new_stock = old_stock - NEW.units_given;
+		UPDATE medicines SET stock_amount = new_stock WHERE id = med_id;
+	ELSE
+		RAISE EXCEPTION 'not enough % in stock to fulfill order', (SELECT name FROM medicines WHERE id=med_id);
+		RETURN NULL;
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_stock_amount_for_medicines BEFORE INSERT ON visit_medicines FOR EACH ROW
+EXECUTE PROCEDURE decrease_stock_amount_after_dosage();
 
 

@@ -1,5 +1,3 @@
---THIS DOES NOT LOAD IN visit_medicines
-
 --
 -- PATS DATA
 --

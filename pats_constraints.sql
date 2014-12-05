@@ -1,6 +1,6 @@
 -- CONSTRAINTS FOR PATS DATABASE
 --
--- by (student_1) & (student_2)
+-- by (Jay Chopra) & (Logan Watanabe)
 --
 --
 --method types ['injection', 'oral', 'intravenous']
@@ -74,6 +74,10 @@ ALTER TABLE notes
 ADD CONSTRAINT notable_type_check
 CHECK (notable_type IN ('owners', 'pets', 'visits'));
 
+--medicine stock_amount
+ALTER TABLE medicines
+ADD CONSTRAINT med_stock_check
+CHECK ( stock_amount >= 0 );
 
 --discount 0<= x <=1
 ALTER TABLE visit_medicines

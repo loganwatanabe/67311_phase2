@@ -1,6 +1,6 @@
 -- PRIVILEGES FOR pats USER OF PATS DATABASE
 --
--- by (student_1) & (student_2)
+-- by (Jay Chopra) & (Logan Watanabe)
 --
 --
 -- SQL needed to create the pats user

@@ -1,6 +1,6 @@
 -- TABLE STRUCTURE FOR PATS DATABASE
 --
--- by (student_1) & (student_2)
+-- by (Jay Chopra) & (Logan Watanabe)
 --
 --CREATE DATABASE pats OWNER {your username};
 --psql -U {your username} -d pats  -f pats_structure.sql

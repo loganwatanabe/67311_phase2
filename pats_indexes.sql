@@ -1,6 +1,6 @@
 -- INDEXES FOR PATS DATABASE
 --
--- by (student_1) & (student_2)
+-- by (Jay Chopra) & (Logan Watanabe)
 --
 --
 --
