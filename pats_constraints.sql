@@ -67,7 +67,10 @@ ADD CONSTRAINT medicine_method
 CHECK (method IN ('intravenous', 'oral', 'injection'));
 
 
-
+--phone constraint
+ALTER TABLE owners
+ADD CONSTRAINT phone_number
+CHECK (phone ~* '\d{10}');
 
 --help to ensure FK type is there, prof h said we don't need to check actual id
 ALTER TABLE notes
